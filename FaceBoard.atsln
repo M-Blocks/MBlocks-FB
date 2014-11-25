@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Atmel Studio Solution File, Format Version 11.00
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "FaceBoard", "FaceBoard.cproj", "{133B8053-C7E9-48FC-B131-D43AF11F8EDB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|AVR = Debug|AVR
+		Release|AVR = Release|AVR
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{133B8053-C7E9-48FC-B131-D43AF11F8EDB}.Debug|AVR.ActiveCfg = Debug|AVR
+		{133B8053-C7E9-48FC-B131-D43AF11F8EDB}.Debug|AVR.Build.0 = Debug|AVR
+		{133B8053-C7E9-48FC-B131-D43AF11F8EDB}.Release|AVR.ActiveCfg = Release|AVR
+		{133B8053-C7E9-48FC-B131-D43AF11F8EDB}.Release|AVR.Build.0 = Release|AVR
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
