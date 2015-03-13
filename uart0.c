@@ -14,6 +14,7 @@
 #include <util/atomic.h>
 
 #include "defines.h"
+#include "timer0.h"
 #include "uart0.h"
 
 #if !defined(UART_RX_BUFFER_SIZE)
@@ -25,23 +26,29 @@
 #endif
 
 
+static volatile uint8_t m_rxActualChar;
+static volatile bool m_rxActualCharValid;
 static volatile uint8_t m_rxBuf[UART_RX_BUFFER_SIZE];
 static volatile uint16_t m_rxBufHead = 0;
 static volatile uint16_t m_rxBufTail;
 static volatile bool m_rxBufEmpty = true;
 static volatile bool m_rxBufFull = false;
 
-
+static volatile uint8_t m_txActual0OrInverse1;
 static volatile uint8_t m_txBuf[UART_RX_BUFFER_SIZE];
 static volatile uint16_t m_txBufHead = 0;
 static volatile uint16_t m_txBufTail;
 static volatile bool m_txBufEmpty = true;
 static volatile bool m_txBufFull = false;
 
+static bool m_initialized = false;
+
 void uart0_init() {
-	/* Disable the transmitter, receiver, and all interrupts.  Clear the UCSZ02
-	 * bit to disable 9-bit data mode.  */
-	UCSR0B = (0<<RXCIE0) | (0<<TXCIE0) | (0<<UDRIE0) | (0<<RXEN0) | (0<<TXEN0) | (0<<UCSZ02);
+	/* Disable the transmitter, receiver, and all interrupts.  Set the UCSZ02
+	 * bit to enable 9-bit data mode.  We'll use the 9th bit to indicate 
+	 * whether a character is the actual/first (0) or inverse/second (1) in
+	 * each pair or bytes we transmit. */
+	UCSR0B = (0<<RXCIE0) | (0<<TXCIE0) | (0<<UDRIE0) | (0<<RXEN0) | (0<<TXEN0) | (1<<UCSZ02);
 	
 	/* Clear the transmit complete interrupt flag, disable double-speed mode, 
 	 * disable multi-processor communication mode. */
@@ -72,19 +79,46 @@ void uart0_init() {
 		m_txBufHead = m_txBufTail = 0;
 		m_txBufEmpty = true;
 		m_txBufFull = false;
+		
+		m_txActual0OrInverse1 = 0;
+		m_rxActualCharValid = false;
 	}
 
 	/* Enable receiver, transmitter, and receive interrupt.  We do not enable
 	 * data register empty interrupt (UDRIE0) because it will trigger 
 	 * continuously until we load data into the register. */
 	UCSR0B |= (1<<RXCIE0) | (1<<RXEN0) | (1<<TXEN0);
+	
+	m_initialized = true;
+}
+
+void uart0_deinit() {
+	/* Disable the transmitter, receiver, and all interrupts.  */
+	UCSR0B = (0<<RXCIE0) | (0<<TXCIE0) | (0<<UDRIE0) | (0<<RXEN0) | (0<<TXEN0);
+	
+	/* Drive TXD0 (PB0) to ground */
+	PORTB &= ~(1<<DDRB0);
+	
+	m_initialized = false;
+}
+
+bool uart0_isInitialized() {
+	bool init = false;
+	
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		init = m_initialized;
+	}
+	
+	return init;
 }
 
 bool uart0_putchar(uint8_t c) {
 	bool success;
-	
+		
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		if (m_txBufFull) {
+		if (!m_initialized) {
+			return false;
+		} else if (m_txBufFull) {
 			/* If the transmit buffer is full, return failure. */
 			success = false;
 		} else {
@@ -105,11 +139,14 @@ bool uart0_putchar(uint8_t c) {
 				m_txBufFull = true;
 			}
 			
-			/* Enable the data register empty interrupt, (if it is not alraedy 
+			/* Enable the data register empty interrupt, (if it is not already 
 			 * enabled).  When the USART has nothing to transmit, this
 			 * interrupt will trigger, and the ISR will transfer a character 
 			 * from the transmit FIFO to the data register. */
 			UCSR0B |= (1<<UDRIE0);
+			
+			/* Enable the 36kHz carrier */
+			timer0_enableCarrierOutput();
 			
 			/* Indicate success to the caller */
 			success = true;
@@ -123,7 +160,9 @@ int16_t uart0_getchar() {
 	int16_t c;
 	
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		if (m_rxBufEmpty) {
+		if (!m_initialized) {
+			c = _FDEV_ERR;
+		} else if (m_rxBufEmpty) {
 			/* Return an error (a negative number) if there are no characters 
 			 * waiting in the receive FIFO. */
 			c = _FDEV_EOF;
@@ -162,10 +201,12 @@ uint8_t uart0_getchar_min() {
 }
 
 uint8_t uart0_getTxBufferCount() {
-	uint8_t size;
+	uint8_t size = 0;
 	
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		if (m_txBufEmpty) {
+		if (!m_initialized) {
+			size = 0;
+		} else if (m_txBufEmpty) {
 			size = 0;
 		} else if (m_txBufFull) {
 			size = UART_TX_BUFFER_SIZE;
@@ -180,10 +221,12 @@ uint8_t uart0_getTxBufferCount() {
 }
 
 uint8_t uart0_getRxBufferCount() {
-	uint8_t size;
+	uint8_t size = 0;
 	
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		if (m_rxBufEmpty) {
+		if (!m_initialized) {
+			size = 0;
+		} else if (m_rxBufEmpty) {
 			size = 0;
 		} else if (m_rxBufFull) {
 			size = UART_RX_BUFFER_SIZE;
@@ -197,64 +240,148 @@ uint8_t uart0_getRxBufferCount() {
 	return size;
 }
 
+void uart0_flushRxBuffer() {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		m_rxBufEmpty = true;
+		m_rxBufFull = false;
+		m_rxBufHead = m_rxBufTail = 0;
+	}
+}
+
 ISR(USART0_UDRE_vect) {
 	/* This interrupt is called when the USART needs to be supplied with more
 	 * data to transmit. */
 	
-	/* If the transmit buffer is empty, disable this interrupt and return.  If
-	 * we leave the interrupt enabled, it will continue to trigger indefinitely. 
-	 */
-	if (m_txBufEmpty) {
-		UCSR0B &= ~(1<<UDRIE0);
-		return;
-	}
+	if (m_txActual0OrInverse1 == 0) {
+		/* If we are supposed to be transmitting the actual (not inverted) 
+		 * character, we first check whether the transmit FIFO is empty.  If it
+		 * is, we disable this interrupt's enable flag and then return. */
+		if (m_txBufEmpty) {
+			UCSR0B &= ~(1<<UDRIE0);
+			/* Enable the transmit complete interrupt in which we will disable
+			 * the carrier wave (which we still happen to need while the last
+			 * byte is shifted out. */
+			UCSR0B |= (1<<TXCIE0);
+			return;
+		}
 	
-	/* More oldest byte from the transmit FIFO into the USART data register */
-	UDR0 = m_txBuf[m_txBufTail];
+		/* Otherwise, we clear the data 9th bit (to signify that this is non-
+		 * inverted data) and then copy the data from the FIFO to the transmit
+		 * data register.  Note that we do not modify the contents of the FIFO
+		 * here because we still need to transmit the inverse of the same 
+		 * character that we just loaded into the transmit buffer. */
+		UCSR0B &= ~(1<<TXB80);
+		UDR0 = m_txBuf[m_txBufTail];
+		
+		/* Indicate that the next time this ISR is executed that we should 
+		 * transmit the inverse character. */
+		m_txActual0OrInverse1 = 1;
+	} else {
+		/* If we are supposed to be transmitting the inverse of the character
+		 * at the tail of the transmit FIFO, we set the 9th data bit and then
+		 * load the inverse of the character into the transmit data buffer. */
+		UCSR0B |= (1<<TXB80);
+		UDR0 = ~m_txBuf[m_txBufTail];
 	
-	/* Increment the tail index */
-	m_txBufTail = (m_txBufTail + 1) % UART_TX_BUFFER_SIZE;
+		/* Indicate that the next time this ISR is executed that we should 
+		 * transmit an actual (non-inverted) character. */
+		m_txActual0OrInverse1 = 0;
 	
-	/* We just pulled a byte out of the transmit FIFO, so it cannot be full. */
-	m_txBufFull = false;
+		/* Now that we have transmitted the inverse character, we can remove 
+		 * the character from the transmit FIFO. */
 	
-	/* If the tail has caught up to the head index, the buffer is now empty. 
-	 * Set the empty flag so that after the byte we just loaded into the USART
-	 * data buffer is sent, and this ISR is executed again, the ISR will be
-	 * disabled. */
-	if (m_txBufTail == m_txBufHead) {
-		m_txBufEmpty = true;
+		/* Increment the tail index */
+		m_txBufTail = (m_txBufTail + 1) % UART_TX_BUFFER_SIZE;
+	
+		/* We just pulled a byte out of the transmit FIFO, so it cannot be full. */
+		m_txBufFull = false;
+	
+		/* If the tail has caught up to the head index, the buffer is now empty. 
+		 * Set the empty flag so that after the byte we just loaded into the USART
+		 * data buffer is sent, and this ISR is executed again, the ISR will be
+		 * disabled. */
+		if (m_txBufTail == m_txBufHead) {
+			m_txBufEmpty = true;
+		}
 	}
 }
 
+ISR(USART0_TXC_vect) {
+	/* Disable the carrier wave */
+	timer0_disableCarrierOutput();
+	
+	/* Disable this interrupt */
+	UCSR0B &= ~(1<<TXCIE0);
+}
+
 ISR(USART0_RX_vect) {
-	uint8_t c;
+	volatile uint8_t c;
+	volatile uint8_t rxActual0OrInverse1;
 	bool err;
 	
 	/* Check for framing, over-run, and parity errors.  These bytes are only 
 	 * valid until the data register is read */
 	err = ((UCSR0A & ((1<<FE0) | (1<<DOR0) | (1<<UPE0))) != 0x00);
 	
+	/* Read the 9th data bit to determine whether the character is inverted. */
+	rxActual0OrInverse1 = (UCSR0B & (1<<RXB80)) ? 1 : 0;
+	
 	/* Read the data register */
 	c = UDR0;
 	
-	/* If the receive buffer is full or there was an error with the received 
-	 * byte, return without placing the byte into the receive FIFO. */
-	if (m_rxBufFull || err) {
+	/* If there was an error with the received byte, return. */
+	if (err) {
+		/* Since we are discarding a character, we mark the any previously 
+		 * received character invalid because we do not want to accidently
+		 * match it against any inverse byte which we know cannot be its
+		 * intended inverse. */
+		m_rxActualCharValid = false;
 		return;
 	}
 	
-	/* Place the new byte into the FIFO */
-	m_rxBuf[m_rxBufHead] = c;
+	/* To help filter noisy output from the IR demodulator, we expect incoming
+	 * bytes to arrive in pairs which are the binary inverses of each other,
+	 * with the non-inverted version arriving first.  When it does, we store it
+	 * in the m_rxActualChar variable and set the m_rxActualCharValid flag. */
+	if (rxActual0OrInverse1 == 0) {
+		/* If we just received what we believe is a non-inverted character, we
+		 * overwrite whatever we have already stored (if anything) and set the
+		 * flag indicating that we are now waiting for the inverse to arrive. */
+		m_rxActualChar = c;
+		m_rxActualCharValid = true;
+		/* Until we receive the inverse, we do not move the character to our
+		 * receive buffer. */
+		return;
+	} else if ((rxActual0OrInverse1 == 1) && (m_rxActualCharValid) && ((m_rxActualChar ^ c) == 0xFF)) {
+		/* If we received what we believe is an inverted character, and we have
+		 * previously received and non-inverted character, and one is the
+		 * binary inverse of the other, we have successfully received one byte
+		 * of data. */
+		
+		#if (1)
+			/* Toggle the blue LED with each character received. */
+			PORT_LED_BLUE ^= (1<<PIN_NUMBER_LED_BLUE);
+		#endif
+		
+		/* Return if the receive buffer is full. */
+		if (m_rxBufFull) {
+			return;
+		}
+		
+		/* Place the non-inverted character into the FIFO */
+		m_rxBuf[m_rxBufHead] = m_rxActualChar;
 	
-	/* Increment the head index, wrapping around back to 0 as necessary. */
-	m_rxBufHead = (m_rxBufHead + 1) % UART_RX_BUFFER_SIZE;
+		/* Increment the head index, wrapping around back to 0 as necessary. */
+		m_rxBufHead = (m_rxBufHead + 1) % UART_RX_BUFFER_SIZE;
 	
-	/* We just added a byte to the FIFO, so it cannot be empty. */
-	m_rxBufEmpty = false;
+		/* We just added a byte to the FIFO, so it cannot be empty. */
+		m_rxBufEmpty = false;
 	
-	/* If the head pointer has caught up with the tail, the FIFO is full. */
-	if (m_rxBufHead == m_rxBufTail) {
-		m_rxBufFull = true;
+		/* If the head pointer has caught up with the tail, the FIFO is full. */
+		if (m_rxBufHead == m_rxBufTail) {
+			m_rxBufFull = true;
+		}		
+	} else {
+		m_rxActualCharValid = false;
 	}
 }

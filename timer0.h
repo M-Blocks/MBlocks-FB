@@ -13,6 +13,8 @@
 #include <stdbool.h>
 
 bool timer0_init(uint8_t freq_khz);
+void timer0_deinit(void);
+
 bool timer0_enableCarrierOutput(void);
 bool timer0_disableCarrierOutput(void);
 bool timer0_getCarrierStatus(void);

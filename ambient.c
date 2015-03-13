@@ -16,5 +16,5 @@ uint8_t ambient_get8Bit() {
 	
 	/* The result of the conversion is a 10-bit integer, which we right-shift
 	 * by two bits so that we only return the 8 most significant bits. */
-	return (uint8_t)(adc_convert(ADC_CH_ADC8, 8, 16) >> 2);
+	return (uint8_t)(adc_convert(ADC_CH_ADC3, 8, 16) >> 2);
 }
