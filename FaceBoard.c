@@ -20,15 +20,22 @@
 
 #include "defines.h"
 #include "timer0.h"
+#include "timer1.h"
+#include "leds.h"
 #include "uart0.h"
+#include "ircomm.h"
+#include "sensors.h"
 #include "ambient.h"
-#include "usiTwiSlave.h"
+#include "twiSlave.h"
+//#include "usiTwiSlave.h"
 
+static uint8_t m_irLEDManualState = 0x00;
 static bool m_sleepRequested = false;
 static uint8_t m_txTestFace = 0x00;
 
-static uint8_t	onI2CReadFromRegister(uint8_t reg);
-static void onI2CWriteToRegister(uint8_t reg, uint8_t value);
+uint8_t getByteForMasterRead(uint8_t registerAddr, uint8_t dataByteCount, bool prevNACK);
+bool processByteFromMasterWrite(uint8_t registerAddr, uint8_t dataByteCount, uint8_t dataByte);
+
 static void sleep(void);
 
 #if(0)
@@ -44,24 +51,6 @@ LOCKBITS = (LOCKBITS_DEFAULT);
 #endif
 
 int main(void) {
-	/* Make the pins driving the RGB LED's cathodes outputs driving high (to 
-	 * keep the LEDs off).  */
-	DDR_LED_RED |= (1<<PIN_NUMBER_LED_RED);
-	PORT_LED_RED |= (1<<PIN_NUMBER_LED_RED);
-	
-	DDR_LED_GREEN |= (1<<PIN_NUMBER_LED_GREEN);
-	PORT_LED_GREEN |= (1<<PIN_NUMBER_LED_GREEN);
-	
-	DDR_LED_BLUE |= (1<<PIN_NUMBER_LED_BLUE);
-	PORT_LED_BLUE |= (1<<PIN_NUMBER_LED_BLUE);
-	
-	/* Make the pins driving the RGB LED's anodes outputs driving high */
-	DDR_LED_ANODE1 |= (1<<PIN_NUMBER_LED_ANODE1);
-	PORT_LED_ANODE1 |= (1<<PIN_NUMBER_LED_ANODE1);
-	
-	DDR_LED_ANODE2 |= (1<<PIN_NUMBER_LED_ANODE2);
-	PORT_LED_ANODE2 |= (1<<PIN_NUMBER_LED_ANODE2);
-	
 	/* Make the pins driving the IR LED anodes outputs driving low.  We will
 	 * drive these pins high to turn on particular LEDs. */
 	DDR_IRLED1_ANODE |= (1<<PIN_NUMBER_IRLED1_ANODE);
@@ -85,20 +74,33 @@ int main(void) {
 	 */
 	DIDR0 |= (1<<ADC3D);
 	
-	/* Disable power to unused peripherals */
-	PRR = (1<<PRTWI) | (1<<PRTIM1) | (1<<PRUSART1);
+	/* Disable power to unused peripherals (USI, USART1)*/
+	PRR = (1<<PRUSI) | (1<<PRUSART1);
 	
 	/* Configure Timer0 to generate a 36kHz carrier wave for the IR 
 	 * communication system. */
-	timer0_init(36);
-	
+	timer0_init(36);	
+
 	/* Initialize the USART which we use to modulate the IR LEDs */
 	uart0_init();
 	
-	usiTwiSlaveInit(I2C_SLAVE_ADDR, onI2CReadFromRegister, onI2CWriteToRegister);
+	/* Initialize the RGB LEDs */
+	leds_init();
+	
+	/* Initialize the timer which we use to strobe the two RGB LEDs*/
+	timer1_init(leds_updateCallback);
+	
+	twiSlave_init(I2C_SLAVE_ADDR, true, getByteForMasterRead, processByteFromMasterWrite);
 	
 	/* Enable global interrupts */
 	sei();
+	
+	while (1) {
+		if (m_sleepRequested) {
+			sleep();
+			m_sleepRequested = false;
+		}
+	}
 	
 	
 #if (1)	
@@ -145,7 +147,7 @@ int main(void) {
 				c = 'A';
 			}
 		}
-		
+			
 		if (m_sleepRequested) {
 			sleep();
 			m_sleepRequested = false;
@@ -160,174 +162,273 @@ int main(void) {
 }
 
 
-uint8_t	onI2CReadFromRegister(uint8_t reg) {
-	uint8_t value = 0x00;
+uint8_t getByteForMasterRead(uint8_t registerAddr, uint8_t dataByteCount, bool prevNACK) {
+	uint8_t response;
+	bool sensorsAlreadyOn;
+	int16_t getCharResp;
+	static uint16_t ambientLightValue = 0x00;
 	
-	switch (reg) {
-		case I2C_REGISTER_ADDR_LEDS:
-			if (!(PIN_LED_RED & (1<<PIN_NUMBER_LED_RED))) {
-				value |= 0x01;
-			}
-			
-			if (!(PIN_LED_GREEN & (1<<PIN_NUMBER_LED_GREEN))) {
-				value |= 0x02;
-			}
-			
-			if (!(PIN_LED_BLUE & (1<<PIN_NUMBER_LED_BLUE))) {
-				value |= 0x04;
-			}
+	switch (registerAddr) {
+		case I2C_REGISTER_ADDR_LEDS_TOP:
+			response = leds_getStateTop();
 			break;
 			
-		case I2C_REGISTER_ADDR_IR_CARRIER:
-			value = timer0_getCarrierStatus();
-			break;
-			
-		case I2C_REGISTER_ADDR_IR_LEDS:
-			if (PIN_IRLED1_ANODE & (1<<PIN_NUMBER_IRLED1_ANODE)) {
-				value |= 0x01;
-			}
-			
-			if (PIN_IRLED2_ANODE & (1<<PIN_NUMBER_IRLED2_ANODE)) {
-				value |= 0x02;
-			}
-						
-			if (PIN_IRLED3_ANODE & (1<<PIN_NUMBER_IRLED3_ANODE)) {
-				value |= 0x04;
-			}
-
-			if (PIN_IRLED4_ANODE & (1<<PIN_NUMBER_IRLED4_ANODE)) {
-				value |= 0x08;
-			}									
+		case I2C_REGISTER_ADDR_LEDS_BOTTOM:
+			response = leds_getStateBottom();
 			break;
 			
 		case I2C_REGISTER_ADDR_AMBIENT_LIGHT:
-			value = ambient_get8Bit();
+			if (dataByteCount == 0) {
+				if ((sensorsAlreadyOn = sensors_getEnabled()) == false) {
+					/* If power was not already being supplied to the ambient
+					 * light sensor (and IR demodulator), turn it on now. */
+					sensors_enable();
+					/* Datasheet states that rise and fall-times of the sensor 
+					 * are both 5ms.  In addition, there is a 5ms propagation 
+					 * delay to content with.  To be safe, delay for 15ms. */
+					_delay_ms(15);
+				}
+				
+				/* Left align the ADC result so that the master can get the
+				 * 8 MSb's by just reading the first byte. */
+				ambientLightValue = ambient_get10Bit() << 6;
+				
+				/* Disable the ambient light sensor and IR demodulator if they
+				 * were not already powered when the command to read the 
+				 * ambient light sensor arrived. */
+				if (!sensorsAlreadyOn) {
+					sensors_disable();
+				}
+				
+				/* Reply with the most-significant byte first */
+				response = (uint8_t)(ambientLightValue >> 8);
+			} else if (dataByteCount == 1) {
+				/* Reply with the least-significant byte second */
+				response = (uint8_t)(ambientLightValue & 0xFF);
+			} else {
+				response = 0xFF;
+			}
+			break;
+		
+		case I2C_REGISTER_ADDR_IR_LEDS_MANUAL_CONTROL:
+			response = m_irLEDManualState;
 			break;
 			
-		case I2C_REGISTER_ADDR_SENSOREN:
-			value = (PIN_SENSOREN & (1<<PIN_NUMBER_SENSOREN)) ? 1 : 0;
-			break;
-			
-		case I2C_REGISTER_ADDR_RX_BUF:
-			value = uart0_getchar_min();
+		case I2C_REGISTER_ADDR_TX_BUF:
+			/* The transmit buffer is write-only, and we read always returns
+			 * 0xFF. */
+			response = 0xFF;
 			break;
 			
 		case I2C_REGISTER_ADDR_TX_COUNT:
-			value = uart0_getTxBufferCount();
+			response = uart0_getTxBufferAvailableCount();
 			break;
-			
-		case I2C_REGISTER_ADDR_TX_ENABLE:
-			value = uart0_isInitialized();
+
+		case I2C_REGISTER_ADDR_TX_LED_SELECT:
+			response = ircomm_getEnabledLEDs();
 			break;
 		
-		case I2C_REGISTER_ADDR_RX_COUNT:
-			value = uart0_getRxBufferCount();
+		case I2C_REGISTER_ADDR_RX_BUF:
+			if ((getCharResp = uart0_getchar()) >= 0) {
+				response = (uint8_t)getCharResp;
+			} else {
+				/* Return 0xFF characters once the receive buffer has been 
+				 * emptied. */
+				response = 0xFF;
+			}
 			break;
 			
-		case I2C_REGISTER_ADDR_TX_TEST:
-			value = m_txTestFace;
-			break; 
+		case I2C_REGISTER_ADDR_RX_COUNT:
+			response = uart0_getRxBufferConsumedCount();
+			break;
 			
+		case I2C_REGISTER_ADDR_RX_FLUSH:
+			/* The receive buffer flush register is write-only and always reads
+			 * 0x00. */
+			response = 0x00;
+			break;
+	
+		case I2C_REGISTER_ADDR_RX_ENABLE:
+			response = (sensors_getEnabled() ? 0x01 : 0x00);
+			break;
+		
 		default:
-			return 0x00;
+			response = 0xFF;
+			break;
 	}
 	
-	return value;
+	return response;
 }
 
-void onI2CWriteToRegister(uint8_t reg, uint8_t value) {
-	switch (reg) {
-		case I2C_REGISTER_ADDR_LEDS:
-			if (value & 0x01) {
-				PORT_LED_RED &= ~(1<<PIN_NUMBER_LED_RED);
-			} else {
-				PORT_LED_RED |= (1<<PIN_NUMBER_LED_RED);
-			}
-			
-			if (value & 0x02) {
-				PORT_LED_GREEN &= ~(1<<PIN_NUMBER_LED_GREEN);
-			} else {
-				PORT_LED_GREEN |= (1<<PIN_NUMBER_LED_GREEN);
-			}
-			
-			if (value & 0x04) {
-				PORT_LED_BLUE &= ~(1<<PIN_NUMBER_LED_BLUE);
-			} else {
-				PORT_LED_BLUE |= (1<<PIN_NUMBER_LED_BLUE);
-			}
+bool processByteFromMasterWrite(uint8_t registerAddr, uint8_t dataByteCount, uint8_t dataByte) {
+	bool ack;
+	
+	switch(registerAddr) {
+		case I2C_REGISTER_ADDR_LEDS_TOP:
+			leds_setStateTop(dataByte);
+			/* NACK to indicate that this is the first, last, and only byte 
+			 * that can be written. */			
+			ack = false;
 			break;
 			
-		case I2C_REGISTER_ADDR_IR_CARRIER:
-			if (value == 0x00) {
-				timer0_disableCarrierOutput();
-			} else if (value == 0x01) {
-				timer0_enableCarrierOutput();
-			}
+		case I2C_REGISTER_ADDR_LEDS_BOTTOM:
+			leds_setStateBottom(dataByte);
+			/* NACK to indicate that this is the first, last, and only byte 
+			 * that can be written. */
+			ack = false;
 			break;
 			
-		case I2C_REGISTER_ADDR_IR_LEDS:
-			if (value & 0x01) {
-				PORT_IRLED1_ANODE |= (1<<PIN_NUMBER_IRLED1_ANODE);
-			} else {
-				PORT_IRLED1_ANODE &= ~(1<<PIN_NUMBER_IRLED1_ANODE);
-			}
-		
-			if (value & 0x02) {
-				PORT_IRLED2_ANODE |= (1<<PIN_NUMBER_IRLED2_ANODE);
-			} else {
-				PORT_IRLED2_ANODE &= ~(1<<PIN_NUMBER_IRLED2_ANODE);
-			}
-			
-			if (value & 0x04) {
-				PORT_IRLED3_ANODE |= (1<<PIN_NUMBER_IRLED3_ANODE);
-			} else {
-				PORT_IRLED3_ANODE &= ~(1<<PIN_NUMBER_IRLED3_ANODE);
-			}
-			
-			if (value & 0x08) {
-				PORT_IRLED4_ANODE |= (1<<PIN_NUMBER_IRLED4_ANODE);
-			} else {
-				PORT_IRLED4_ANODE &= ~(1<<PIN_NUMBER_IRLED4_ANODE);
-			}			
+		case I2C_REGISTER_ADDR_AMBIENT_LIGHT:
+			/* The ambient light sensor value register is read-only */
+			ack = false;
 			break;
 			
-		
-		case I2C_REGISTER_ADDR_SENSOREN:
-			if (value & 0x01) {
-				PORT_SENSOREN |= (1<<PIN_NUMBER_SENSOREN);
-			} else {
-				PORT_SENSOREN &= ~(1<<PIN_NUMBER_SENSOREN);
+		case I2C_REGISTER_ADDR_IR_LEDS_MANUAL_CONTROL:
+			if (uart0_getTxBufferEmpty()) {
+				/* We only allow manual control over the IR LEDs if the
+				 * transmit buffer is empty because we will need to disable
+				 * the transmitter to control the LEDs manually. */
+				
+				/* Only the lower-order nibble is used to turn the IR LEDs on
+				 * and off. */
+				dataByte &= 0x0F;
+				
+				/* Save the state so that we if try to read the state while the
+				 * UART is transmitting, we do not inadvertently read which IR
+				 * LED is being used for transmission. */
+				m_irLEDManualState = dataByte;
+				
+				if (m_irLEDManualState != 0x00) {
+					/* If the master is attempting to turn at least one of the
+					 * IR LEDs on manually, we disable the 36kHz IR carrier and
+					 * the UART transmitter circuit, so that the OR gated 
+					 * connected to all of the IR LEDs' cathodes will pull low.
+					 */					 
+					timer0_disableCarrierOutput();
+					uart0_disableTx();
+					
+					/* Turn the individual LEDs on or off by pulling their
+					 * anodes to VCC. */
+					if (m_irLEDManualState & 0x01) {
+						PORT_IRLED1_ANODE |= (1<<PIN_NUMBER_IRLED1_ANODE);
+					} else {
+						PORT_IRLED1_ANODE &= ~(1<<PIN_NUMBER_IRLED1_ANODE);
+					}
+					
+					if (m_irLEDManualState & 0x02) {
+						PORT_IRLED2_ANODE |= (1<<PIN_NUMBER_IRLED2_ANODE);
+					} else {
+						PORT_IRLED2_ANODE &= ~(1<<PIN_NUMBER_IRLED2_ANODE);
+					}
+					
+					if (m_irLEDManualState & 0x04) {
+						PORT_IRLED3_ANODE |= (1<<PIN_NUMBER_IRLED3_ANODE);
+					} else {
+						PORT_IRLED3_ANODE &= ~(1<<PIN_NUMBER_IRLED3_ANODE);
+					}
+					
+					if (m_irLEDManualState & 0x08) {
+						PORT_IRLED4_ANODE |= (1<<PIN_NUMBER_IRLED4_ANODE);
+					} else {
+						PORT_IRLED4_ANODE &= ~(1<<PIN_NUMBER_IRLED4_ANODE);
+					}				
+				} else {
+					/* Drive all IR LED anodes to ground */
+					PORT_IRLED1_ANODE &= ~(1<<PIN_NUMBER_IRLED1_ANODE);
+					PORT_IRLED2_ANODE &= ~(1<<PIN_NUMBER_IRLED2_ANODE);
+					PORT_IRLED3_ANODE &= ~(1<<PIN_NUMBER_IRLED3_ANODE);
+					PORT_IRLED4_ANODE &= ~(1<<PIN_NUMBER_IRLED4_ANODE);
+					/* If the master is turning off all IR LEDs, we re-enable
+					 * the UART transmitter, which will pull the TXD0 line high
+					 * by default. With TXD0 high, the output of the OR gate 
+					 * which drives all of the IR LEDs' cathodes will pull 
+					 * high, thereby turning off all of the IR LEDs. */
+					uart0_enableTx();
+				}
 			}
-			break;	
-		
+			/* NACK to indicate that this is the first, last, and only byte 
+			 * that can be written. */			
+			ack = false;
+			break;		
+			
 		case I2C_REGISTER_ADDR_TX_BUF:
-			uart0_putchar(value);
+			if (m_irLEDManualState == 0x00) {
+				/* If there are no IR LEDs turned on in manual mode (i.e.
+				 * without modulation), we allow the master to write bytes to
+				 * the transmit buffer. Note that the transmitter should 
+				 * already be enabled as it is always re-enabled when none of
+				 * the IR LEDs are in manual mode. */
+				uart0_putchar(dataByte);
+				/* So long as there is still space for at least one additional
+				 * byte in the transmit buffer, continue to ACK the master's
+				 * transmissions. */
+				if (uart0_getTxBufferAvailableCount() >= 1) {
+					ack = true;
+				} else {
+					ack = false;
+				}
+			} else {
+				/* If one or more IR LEDs are configured for manual, always-on
+				 * mode, prevent writing to the transmit buffer. */
+				ack = false;
+			}
 			break;
 			
-		case I2C_REGISTER_ADDR_TX_ENABLE:
-			if ((value == 0x01) && (!uart0_isInitialized())){
-				uart0_init();
-			} else if (value == 0x00) {
-				uart0_deinit();
+		case I2C_REGISTER_ADDR_TX_COUNT:
+			/* The transmit buffer counter register is read-only. */
+			ack = false;
+			break;
+
+		case I2C_REGISTER_ADDR_TX_LED_SELECT:
+			/* We only allow the IR LEDs used for transmission to be changed
+			 * when the transmit buffer is empty. */
+			if (uart0_getTxBufferEmpty()) {
+				ircomm_setEnabledLEDs(dataByte);
 			}
+			/* NACK to indicate that this is the first, last, and only byte 
+			 * that can be written. */				
+			ack = false;
+			break;			
+			
+		case I2C_REGISTER_ADDR_RX_BUF:
+		case I2C_REGISTER_ADDR_RX_COUNT:
+			/* The receive buffer and receive buffer count registers are both
+			 * read-only. */
+			ack = false;
 			break;
 			
 		case I2C_REGISTER_ADDR_RX_FLUSH:
 			uart0_flushRxBuffer();
+			/* NACK to indicate that this is the first, last, and only byte 
+			 * that can be written. */				
+			ack = false;
+			break;
+			
+		case I2C_REGISTER_ADDR_RX_ENABLE:
+			if (dataByte & 0x01) {
+				sensors_enable();
+			} else {
+				sensors_disable();
+			}
+			ack = false;	
 			break;
 		
 		case I2C_REGISTER_ADDR_SLEEP:
+			/* Set a flag that is trapped in the main loop. */
 			m_sleepRequested = true;
-			break;
-		
-		case I2C_REGISTER_ADDR_TX_TEST:
-			m_txTestFace = value & 0x0F;
-			break;
+			/* NACK to indicate that this is the first, last, and only byte 
+			 * that can be written. */				
+			ack = false;
+			break;		
 		
 		default:
+			ack = false;
 			break;
 	}
+	
+	return ack;
 }
+
 
 void sleep() {
 	/* Remove power from the ADC */
@@ -350,6 +451,15 @@ void sleep() {
 	uart0_deinit();
 	PRR |= (1<<PRUSART0);
 	
+	/* Turn off all RGB LEDs, but note that this make take up to 20ms to take
+	 * effect, so we manually set the RGB LED control lines below. */
+	leds_setStateTop(0x00);
+	leds_setStateBottom(0x00);
+	
+	/* Stop the timer which strobes the RGB LEDs and then power it down. */
+	timer1_stop();
+	PRR |= (1<<PRTIM1);
+	
 	/* Turn off the RGB LEDs: drive both the anodes and cathodes to ground. */
 	PORT_LED_ANODE1 &= ~(1<<PIN_NUMBER_LED_ANODE1);
 	PORT_LED_ANODE2 &= ~(1<<PIN_NUMBER_LED_ANODE2);
@@ -371,6 +481,12 @@ void sleep() {
 	
 	PORT_LED_ANODE1 |= (1<<PIN_NUMBER_LED_ANODE1);
 	PORT_LED_ANODE2 |= (1<<PIN_NUMBER_LED_ANODE2);
+	
+	/* Restore power to the timer which strobes the RGB LEDs and then re-
+	 * initialize it, just to be safe.  It will automatically be restarted when
+	 * the RGB LEDs are next instructed to turn on. */
+	PRR &= ~(1<<PRTIM1);
+	timer1_init(leds_updateCallback);
 	
 	/* Restore power to and re-initialize the UART */
 	PRR &= ~(1<<PRUSART0);

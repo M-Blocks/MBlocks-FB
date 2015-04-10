@@ -16,11 +16,16 @@ void uart0_init(void);
 void uart0_deinit(void);
 bool uart0_isInitialized(void);
 
+void uart0_enableTx(void);
+void uart0_disableTx(void);
+bool uart0_isTxEnabled(void);
+
 bool uart0_putchar(uint8_t c);
 int16_t uart0_getchar(void);
 uint8_t uart0_getchar_min(void);
-uint8_t uart0_getTxBufferCount(void);
-uint8_t uart0_getRxBufferCount(void);
+bool uart0_getTxBufferEmpty(void);
+uint8_t uart0_getTxBufferAvailableCount(void);
+uint8_t uart0_getRxBufferConsumedCount(void);
 void uart0_flushRxBuffer(void);
 
 

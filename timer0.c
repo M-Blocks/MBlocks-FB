@@ -44,9 +44,10 @@ bool timer0_init(uint8_t freq_khz) {
 		 * also used to control Timer1 interrupts.  */
 		TIMSK &= ~((1<<OCIE0B) | (1<<TOIE0) | (1<<OCIE0A));
 	
-		/* Reset all Timer0 interrupt flags. Note that the TIFR register is also
-		 * used to signal Timer1 interrupts.  */
-		TIFR &= ~((1<<OCF0B) | (1<<TOV0) | (1<<OCF0A));
+		/* Reset all Timer0 interrupt flags by writing 1's to their bit 
+		 * positions. Note that the TIFR register is also used to signal Timer1
+		 * interrupts.  */
+		TIFR |= (1<<OCF0B) | (1<<TOV0) | (1<<OCF0A);
 	
 		/* With the timer configured to use OCR0A as its TOP value and OC0A 
 		 * configured to toggle on each match, set set OCR0A to half of the desired

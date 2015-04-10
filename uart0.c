@@ -15,14 +15,15 @@
 
 #include "defines.h"
 #include "timer0.h"
+#include "ircomm.h"
 #include "uart0.h"
 
 #if !defined(UART_RX_BUFFER_SIZE)
-#define UART_RX_BUFFER_SIZE 32
+#define UART_RX_BUFFER_SIZE 128
 #endif
 
 #if !defined(UART_TX_BUFFER_SIZE)
-#define UART_TX_BUFFER_SIZE 32
+#define UART_TX_BUFFER_SIZE 128
 #endif
 
 
@@ -61,8 +62,13 @@ void uart0_init() {
 	 * disable the start frame detector. */
 	UCSR0D = (0<<RXSIE0) | (1<<RXS0) | (0<<SFDE0);
 
-	/* Make TXD0 (PB0) an output */
+	/* Make TXD0 (PB0) an output driving low.  As soon as the transmitter is
+	 * enabled, it will pull the pin high automatically.  When the transmitter
+	 * is disabled (as it is when using the IR LEDs in manual mode) we want
+	 * the TXD0 pin to pull low so as to not preclude the OR gate which drives
+	 * the IR LEDs' cathodes from going low. */
 	DDRB |= (1<<DDRB0);
+	PORTB &= ~(1<<PORTB0);
 	
 	/* Make RXD0 (PA7) an input */
 	DDRA &= ~(1<<DDRA7);
@@ -97,7 +103,7 @@ void uart0_deinit() {
 	UCSR0B = (0<<RXCIE0) | (0<<TXCIE0) | (0<<UDRIE0) | (0<<RXEN0) | (0<<TXEN0);
 	
 	/* Drive TXD0 (PB0) to ground */
-	PORTB &= ~(1<<DDRB0);
+	PORTB &= ~(1<<PORTB0);
 	
 	m_initialized = false;
 }
@@ -110,6 +116,28 @@ bool uart0_isInitialized() {
 	}
 	
 	return init;
+}
+
+void uart0_enableTx() {
+	if (!m_initialized) {
+		return;
+	}
+	
+	/* Enable the transmitter by setting the TXEN0 bit */
+	UCSR0B |= (1<<TXEN0);
+}
+
+void uart0_disableTx() {
+	/* Disable the transmitter by clearing just the TXEN0 bit */
+	UCSR0B &= ~(1<<TXEN0);
+	
+	/* Drive TXD0 (PB0) to ground */
+	PORTB &= ~(1<<PORTB0);	
+}
+
+bool uart0_isTxEnabled() {
+	/* Check the TXEN0 bit to determine whether the transmitter is enabled. */
+	return ((UCSR0B & (1<<TXEN0)) ? true : false);
 }
 
 bool uart0_putchar(uint8_t c) {
@@ -147,6 +175,10 @@ bool uart0_putchar(uint8_t c) {
 			
 			/* Enable the 36kHz carrier */
 			timer0_enableCarrierOutput();
+			
+			/* Drive the anodes for the IR LEDs that have been selected for
+			 * transmission to VCC. */
+			ircomm_activateEnabledLEDs();
 			
 			/* Indicate success to the caller */
 			success = true;
@@ -200,7 +232,17 @@ uint8_t uart0_getchar_min() {
 	return (uint8_t)c;
 }
 
-uint8_t uart0_getTxBufferCount() {
+bool uart0_getTxBufferEmpty() {
+	bool empty;
+	
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		empty = m_txBufEmpty;
+	}
+	
+	return empty;
+}
+
+uint8_t uart0_getTxBufferAvailableCount() {
 	uint8_t size = 0;
 	
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -220,7 +262,7 @@ uint8_t uart0_getTxBufferCount() {
 	return size;
 }
 
-uint8_t uart0_getRxBufferCount() {
+uint8_t uart0_getRxBufferConsumedCount() {
 	uint8_t size = 0;
 	
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -307,6 +349,9 @@ ISR(USART0_UDRE_vect) {
 }
 
 ISR(USART0_TXC_vect) {
+	/* Deactivate the anodes of all the IR LEDs */
+	ircomm_deactivateAllLEDs();	
+	
 	/* Disable the carrier wave */
 	timer0_disableCarrierOutput();
 	

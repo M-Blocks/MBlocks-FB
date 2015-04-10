@@ -29,15 +29,15 @@
     <BootSegment>2</BootSegment>
     <AsfFrameworkConfig>
       <framework-data>
-        <options />
-        <configurations />
-        <files />
-        <documentation help="" />
-        <offline-documentation help="" />
-        <dependencies>
-          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.6.0" />
-        </dependencies>
-      </framework-data>
+  <options />
+  <configurations />
+  <files />
+  <documentation help="" />
+  <offline-documentation help="" />
+  <dependencies>
+    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.10.1" />
+  </dependencies>
+</framework-data>
     </AsfFrameworkConfig>
     <avrtool>com.atmel.avrdbg.tool.jtagice3plus</avrtool>
     <com_atmel_avrdbg_tool_jtagice3plus>
@@ -473,22 +473,43 @@
     <Compile Include="ircomm.c">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="ircomm.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="leds.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="leds.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="sensors.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="sensors.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="timer0.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="timer0.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="timer1.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="timer1.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="twiSlave.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="twiSlave.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="uart0.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="uart0.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usiTwiSlave.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usiTwiSlave.h">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>

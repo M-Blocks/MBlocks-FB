@@ -18,3 +18,10 @@ uint8_t ambient_get8Bit() {
 	 * by two bits so that we only return the 8 most significant bits. */
 	return (uint8_t)(adc_convert(ADC_CH_ADC3, 8, 16) >> 2);
 }
+
+uint16_t ambient_get10Bit() {
+	adc_init(ADC_REF1V10, ADC_PRESCALE_8);
+	
+	/* The result of the conversion is a 10-bit integer. */
+	return adc_convert(ADC_CH_ADC3, 8, 16);
+}

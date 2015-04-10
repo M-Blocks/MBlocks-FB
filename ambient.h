@@ -13,5 +13,6 @@
 #include <stdbool.h>
 
 uint8_t ambient_get8Bit(void);
+uint16_t ambient_get10Bit(void);
 
 #endif /* AMBIENT_H_ */

@@ -10,23 +10,28 @@
 #define DEFINES_H_
 
 
-#define I2C_REGISTER_ADDR_LEDS			0x01
-#define I2C_REGISTER_ADDR_IR_CARRIER	0x02
-#define I2C_REGISTER_ADDR_IR_LEDS		0x03
-#define I2C_REGISTER_ADDR_AMBIENT_LIGHT	0x04
-#define I2C_REGISTER_ADDR_SENSOREN		0x05
+#define I2C_REGISTER_ADDR_LEDS_TOP					0x00
+#define I2C_REGISTER_ADDR_LEDS_BOTTOM				0x01
 
-#define I2C_REGISTER_ADDR_TX_BUF		0x10
-#define I2C_REGISTER_ADDR_TX_COUNT		0x11
-#define I2C_REGISTER_ADDR_TX_ENABLE		0x12
+#define I2C_REGISTER_ADDR_AMBIENT_LIGHT				0x10
 
-#define I2C_REGISTER_ADDR_RX_BUF		0x20
-#define I2C_REGISTER_ADDR_RX_COUNT		0x21
-#define I2C_REGISTER_ADDR_RX_FLUSH		0x22
+/* */
+#define I2C_REGISTER_ADDR_IR_LEDS_MANUAL_CONTROL	0x20
 
-#define I2C_REGISTER_ADDR_SLEEP			0x30
+/* Multi-byte register to which data to be transmitted should be written */
+#define I2C_REGISTER_ADDR_TX_BUF					0x30
+/* Read only register indicating how many bytes remain to be transmitted */
+#define I2C_REGISTER_ADDR_TX_COUNT					0x31
+/* Select which IR LEDs are used for transmission */
+#define I2C_REGISTER_ADDR_TX_LED_SELECT				0x33
 
-#define I2C_REGISTER_ADDR_TX_TEST		0x40
+#define I2C_REGISTER_ADDR_RX_BUF					0x40
+#define I2C_REGISTER_ADDR_RX_COUNT					0x41
+#define I2C_REGISTER_ADDR_RX_FLUSH					0x42
+#define I2C_REGISTER_ADDR_RX_ENABLE					0x43
+
+#define I2C_REGISTER_ADDR_SLEEP						0x50
+
 
 #define DDR_LED_RED				DDRA
 #define PORT_LED_RED			PORTA
