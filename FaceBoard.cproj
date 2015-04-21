@@ -52,31 +52,7 @@
     </com_atmel_avrdbg_tool_jtagice3plus>
     <avrtoolinterface>debugWIRE</avrtoolinterface>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-    <ToolchainSettings>
-      <AvrGcc xmlns="">
-        <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
-        <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
-        <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
-        <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
-        <avrgcc.common.outputfiles.usersignatures>False</avrgcc.common.outputfiles.usersignatures>
-        <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
-        <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
-        <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
-        <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
-        <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
-        <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
-        <avrgcc.linker.libraries.Libraries>
-          <ListValues>
-            <Value>libm</Value>
-          </ListValues>
-        </avrgcc.linker.libraries.Libraries>
-      </AvrGcc>
-    </ToolchainSettings>
-    <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
-bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug-Face1' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-1' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -108,8 +84,13 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     </ToolchainSettings>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Debug_Face-1</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug-Face2' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-2' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -142,8 +123,13 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     <OutputPath>bin\Debug-Face2\</OutputPath>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Debug_Face-2</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug-Face3' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-3' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -176,8 +162,13 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     <OutputPath>bin\Debug-Face3\</OutputPath>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Debug_Face-3</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug-Face4' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-4' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -210,8 +201,13 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     <OutputPath>bin\Debug-Face4\</OutputPath>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Debug_Face-4</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug-Face5' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-5' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -244,8 +240,13 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     <OutputPath>bin\Debug-Face5\</OutputPath>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Debug_Face-5</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug-Face6' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-6' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -278,8 +279,13 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     <OutputPath>bin\Debug-Face6\</OutputPath>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Debug_Face-6</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release-Face1' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release_Face-1' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -311,8 +317,13 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     <OutputPath>bin\Release-Face1\</OutputPath>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Release_Face-1</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release-Face2' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release_Face-2' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -344,8 +355,13 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     <OutputPath>bin\Release-Face2\</OutputPath>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Release_Face-2</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release-Face3' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release_Face-3' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -377,8 +393,13 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     <OutputPath>bin\Release-Face3\</OutputPath>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Release_Face-3</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release-Face4' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release_Face-4' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -410,8 +431,13 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     <OutputPath>bin\Release-Face4\</OutputPath>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Release_Face-4</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release-Face5' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release_Face-5' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -443,8 +469,13 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     <OutputPath>bin\Release-Face5\</OutputPath>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Release_Face-5</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release-Face6' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release_Face-6' ">
     <ToolchainSettings>
       <AvrGcc>
         <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
@@ -476,6 +507,11 @@ bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h
     <OutputPath>bin\Release-Face6\</OutputPath>
     <PreBuildEvent>bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.c ../gitversion.c"
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
+    <OutputFileName>FaceBoard_Release_Face-6</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
+bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="adc.c">

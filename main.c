@@ -19,6 +19,7 @@
 #include <stdbool.h>
 
 #include "defines.h"
+#include "gitversion.h"
 #include "timer0.h"
 #include "timer1.h"
 #include "leds.h"
@@ -30,7 +31,6 @@
 
 static uint8_t m_irLEDManualState = 0x00;
 static bool m_sleepRequested = false;
-static uint8_t m_txTestFace = 0x00;
 
 uint8_t getByteForMasterRead(uint8_t registerAddr, uint8_t dataByteCount, bool prevNACK);
 bool getMasterWriteAllowed(uint8_t registerAddr);
