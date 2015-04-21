@@ -25,6 +25,7 @@ int16_t uart0_getchar(void);
 uint8_t uart0_getchar_min(void);
 bool uart0_getTxBufferEmpty(void);
 uint8_t uart0_getTxBufferAvailableCount(void);
+uint8_t uart0_getTxBufferConsumedCount(void);
 uint8_t uart0_getRxBufferConsumedCount(void);
 void uart0_flushRxBuffer(void);
 

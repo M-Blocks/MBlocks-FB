@@ -32,6 +32,8 @@
 
 #define I2C_REGISTER_ADDR_SLEEP						0x50
 
+#define I2C_REGISTER_ADDR_VERSION					0xFF
+
 
 #define DDR_LED_RED				DDRA
 #define PORT_LED_RED			PORTA

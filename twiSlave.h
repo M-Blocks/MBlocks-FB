@@ -14,6 +14,7 @@
 
 void twiSlave_init(uint8_t slaveAddr, bool generalCallEnable,
 		uint8_t (*getByteForMasterReadFcnPtr)(uint8_t registerAddr, uint8_t dataByteCount, bool prevNACK),
+		bool (*getMasterWriteAllowedFcnPtr)(uint8_t registerAddr),
 		bool (*processByteFromMasterWriteFcnPtr)(uint8_t registerAddr, uint8_t dataByteCount, uint8_t dataByte));
 void twiSlave_busErrorCheck(void);
 

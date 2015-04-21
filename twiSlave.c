@@ -21,10 +21,12 @@ static volatile uint8_t m_registerAddr;
 static volatile uint8_t m_dataByteCount;
 
 static uint8_t (*m_getByteForMasterRead)(uint8_t registerAddr, uint8_t dataByteCount, bool prevNACK) = NULL;
+static bool (*m_getMasterWriteAllowed)(uint8_t registerAddr) = NULL;
 static bool (*m_processByteFromMasterWrite)(uint8_t registerAddr, uint8_t dataByteCount, uint8_t dataByte) = NULL;
 
 void twiSlave_init(uint8_t slaveAddr, bool generalCallEnable,
 		uint8_t (*getByteForMasterReadFcnPtr)(uint8_t registerAddr, uint8_t dataByteCount, bool prevNACK),
+		bool (*getMasterWriteAllowedFcnPtr)(uint8_t registerAddr),
 		bool (*processByteFromMasterWriteFcnPtr)(uint8_t registerAddr, uint8_t dataByteCount, uint8_t dataByte)) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		/* Disable the TWI interface */
@@ -35,6 +37,7 @@ void twiSlave_init(uint8_t slaveAddr, bool generalCallEnable,
 		m_dataByteCount = 0;
 	
 		m_getByteForMasterRead = getByteForMasterReadFcnPtr;
+		m_getMasterWriteAllowed = getMasterWriteAllowedFcnPtr;
 		m_processByteFromMasterWrite = processByteFromMasterWriteFcnPtr;
 	
 		/* Set the address.  The least significant bit, if set, enable the Atmel to
@@ -92,8 +95,16 @@ ISR(TWI_vect) {
 				 * master wishes to write/read, we clear the flag which we
 				 * used to capture the address. */
 				m_waitingForAddr = false;
-				/* We always ACK the address byte */
-				nack = false;
+				
+				/* We only ACK the address byte if the writing to the specified
+				 * address is allowed.  Otherwise, we NACK.  Think of an 
+				 * ACK/NACK as applying to the next byte.  So, a NACK indicates
+				 * that the next byte will be ignored. */
+				if (m_getMasterWriteAllowed(m_registerAddr)) {
+					nack = false;
+				} else {
+					nack = true;
+				}
 			} else {
 				/* If the master continues writing bytes after the address 
 				 * byte, we execute a processing callback for each.  Note

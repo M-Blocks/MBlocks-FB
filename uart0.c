@@ -167,18 +167,18 @@ bool uart0_putchar(uint8_t c) {
 				m_txBufFull = true;
 			}
 			
-			/* Enable the data register empty interrupt, (if it is not already 
-			 * enabled).  When the USART has nothing to transmit, this
-			 * interrupt will trigger, and the ISR will transfer a character 
-			 * from the transmit FIFO to the data register. */
-			UCSR0B |= (1<<UDRIE0);
-			
 			/* Enable the 36kHz carrier */
 			timer0_enableCarrierOutput();
 			
 			/* Drive the anodes for the IR LEDs that have been selected for
 			 * transmission to VCC. */
 			ircomm_activateEnabledLEDs();
+			
+			/* Enable the data register empty interrupt, (if it is not already 
+			 * enabled).  When the USART has nothing to transmit, this
+			 * interrupt will trigger, and the ISR will transfer a character 
+			 * from the transmit FIFO to the data register. */
+			UCSR0B |= (1<<UDRIE0);
 			
 			/* Indicate success to the caller */
 			success = true;
@@ -243,6 +243,26 @@ bool uart0_getTxBufferEmpty() {
 }
 
 uint8_t uart0_getTxBufferAvailableCount() {
+	uint8_t size = 0;
+	
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		if (!m_initialized) {
+			size = 0;
+		} else if (m_txBufEmpty) {
+			size = UART_TX_BUFFER_SIZE;
+		} else if (m_txBufFull) {
+			size = 0;
+		} else if (m_txBufHead > m_txBufTail) {
+			size = UART_TX_BUFFER_SIZE - (m_txBufHead - m_txBufTail);
+		} else {
+			size = m_txBufTail - m_txBufHead;
+		}
+	}
+	
+	return size;
+}
+
+uint8_t uart0_getTxBufferConsumedCount() {
 	uint8_t size = 0;
 	
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {

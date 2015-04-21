@@ -27,13 +27,13 @@
 #include "sensors.h"
 #include "ambient.h"
 #include "twiSlave.h"
-//#include "usiTwiSlave.h"
 
 static uint8_t m_irLEDManualState = 0x00;
 static bool m_sleepRequested = false;
 static uint8_t m_txTestFace = 0x00;
 
 uint8_t getByteForMasterRead(uint8_t registerAddr, uint8_t dataByteCount, bool prevNACK);
+bool getMasterWriteAllowed(uint8_t registerAddr);
 bool processByteFromMasterWrite(uint8_t registerAddr, uint8_t dataByteCount, uint8_t dataByte);
 
 static void sleep(void);
@@ -90,7 +90,7 @@ int main(void) {
 	/* Initialize the timer which we use to strobe the two RGB LEDs*/
 	timer1_init(leds_updateCallback);
 	
-	twiSlave_init(I2C_SLAVE_ADDR, true, getByteForMasterRead, processByteFromMasterWrite);
+	twiSlave_init(I2C_SLAVE_ADDR, true, getByteForMasterRead, getMasterWriteAllowed, processByteFromMasterWrite);
 	
 	/* Enable global interrupts */
 	sei();
@@ -100,65 +100,9 @@ int main(void) {
 			sleep();
 			m_sleepRequested = false;
 		}
+		
+		twiSlave_busErrorCheck();
 	}
-	
-	
-#if (1)	
-	char c = 'A';
-
-    while(1) {
-		_delay_ms(400);
-		
-		if (((m_txTestFace & 0x0F) != 0x00) && (uart0_isInitialized())) {
-			if (m_txTestFace & 0x01) {
-				PORT_IRLED1_ANODE |= (1<<PIN_NUMBER_IRLED1_ANODE);
-				} else {
-				PORT_IRLED1_ANODE &= ~(1<<PIN_NUMBER_IRLED1_ANODE);
-			}
-			
-			if (m_txTestFace & 0x02) {
-				PORT_IRLED2_ANODE |= (1<<PIN_NUMBER_IRLED2_ANODE);
-				} else {
-				PORT_IRLED2_ANODE &= ~(1<<PIN_NUMBER_IRLED2_ANODE);
-			}
-			
-			if (m_txTestFace & 0x04) {
-				PORT_IRLED3_ANODE |= (1<<PIN_NUMBER_IRLED3_ANODE);
-				} else {
-				PORT_IRLED3_ANODE &= ~(1<<PIN_NUMBER_IRLED3_ANODE);
-			}
-			
-			if (m_txTestFace & 0x08) {
-				PORT_IRLED4_ANODE |= (1<<PIN_NUMBER_IRLED4_ANODE);
-				} else {
-				PORT_IRLED4_ANODE &= ~(1<<PIN_NUMBER_IRLED4_ANODE);
-			}
-			
-			uart0_putchar(c);
-		
-			/* Flash the green LED */
-			PORT_LED_GREEN &= ~(1<<PIN_NUMBER_LED_GREEN);
-			_delay_ms(100);
-			PORT_LED_GREEN |= (1<<PIN_NUMBER_LED_GREEN);
-		
-			if (c < 'Z') {
-				c++;
-			} else {
-				c = 'A';
-			}
-		}
-			
-		if (m_sleepRequested) {
-			sleep();
-			m_sleepRequested = false;
-		}
-    }
-#elif (0)
-	/* Enable the IR receiver */
-	PORT_SENSOREN |= (1<<PIN_NUMBER_SENSOREN);
-#endif
-
-	while(1) {}
 }
 
 
@@ -252,6 +196,16 @@ uint8_t getByteForMasterRead(uint8_t registerAddr, uint8_t dataByteCount, bool p
 			response = (sensors_getEnabled() ? 0x01 : 0x00);
 			break;
 		
+		case I2C_REGISTER_ADDR_VERSION:
+			if (dataByteCount == 0) {
+				response = MAJOR_VERSION;
+			} else if (dataByteCount == 1) {
+				response = MAJOR_VERSION;
+			} else {
+				response = 0xFF;
+			}
+			break;
+		
 		default:
 			response = 0xFF;
 			break;
@@ -259,6 +213,72 @@ uint8_t getByteForMasterRead(uint8_t registerAddr, uint8_t dataByteCount, bool p
 	
 	return response;
 }
+
+bool getMasterWriteAllowed(uint8_t registerAddr) {
+	switch(registerAddr) {
+		case I2C_REGISTER_ADDR_LEDS_TOP:
+		case I2C_REGISTER_ADDR_LEDS_BOTTOM:
+			return true;
+			
+		case I2C_REGISTER_ADDR_AMBIENT_LIGHT:
+			/* The ambient light register is read-only */
+			return false;
+			
+		case I2C_REGISTER_ADDR_IR_LEDS_MANUAL_CONTROL:
+			/* We only allow manual control over the IR LEDs if the
+			 * transmit buffer is empty because we will need to disable
+			 * the transmitter to control the LEDs manually. */
+			if (uart0_getTxBufferEmpty()) {
+				return true;
+			} else {
+				return false;
+			}
+
+		case I2C_REGISTER_ADDR_TX_BUF:
+			if ((m_irLEDManualState == 0x00) && (ircomm_getEnabledLEDs() != 0x00) && (uart0_getTxBufferAvailableCount() >= 1)) {
+				/* If there are no IR LEDs turned on in manual mode (i.e.
+				 * without modulation), there are LED(s) selected for IR
+				 * communication, and there is space in the transmit
+				 * buffer, we allow the master to write to the transmit 
+				 * register. */
+				return true;
+			} else {
+				return false;
+			}
+			
+		case I2C_REGISTER_ADDR_TX_COUNT:
+			return false;
+
+		case I2C_REGISTER_ADDR_TX_LED_SELECT:
+			/* We only allow the IR LEDs used for transmission to be changed
+			 * when the transmit buffer is empty. */
+			if (uart0_getTxBufferEmpty()) {
+				return true;
+			} else {
+				return false;
+			}		
+			
+		case I2C_REGISTER_ADDR_RX_BUF:
+		case I2C_REGISTER_ADDR_RX_COUNT:
+			/* The received data buffer and the received data counter registers
+			 * are both read-only. */
+			return false;
+			
+		case I2C_REGISTER_ADDR_RX_FLUSH:
+		case I2C_REGISTER_ADDR_RX_ENABLE:
+		case I2C_REGISTER_ADDR_SLEEP:
+			return true;
+		
+		case I2C_REGISTER_ADDR_VERSION:
+			return false;
+		
+		default:
+			return false;
+	}
+	
+	return false;	
+}
+
 
 bool processByteFromMasterWrite(uint8_t registerAddr, uint8_t dataByteCount, uint8_t dataByte) {
 	bool ack;
@@ -352,9 +372,10 @@ bool processByteFromMasterWrite(uint8_t registerAddr, uint8_t dataByteCount, uin
 			break;		
 			
 		case I2C_REGISTER_ADDR_TX_BUF:
-			if (m_irLEDManualState == 0x00) {
+			if ((m_irLEDManualState == 0x00) && (ircomm_getEnabledLEDs() != 0x00)) {
 				/* If there are no IR LEDs turned on in manual mode (i.e.
-				 * without modulation), we allow the master to write bytes to
+				 * without modulation) and there are LED(s) select for IR
+				 * communication, we allow the master to write bytes to
 				 * the transmit buffer. Note that the transmitter should 
 				 * already be enabled as it is always re-enabled when none of
 				 * the IR LEDs are in manual mode. */
@@ -419,7 +440,12 @@ bool processByteFromMasterWrite(uint8_t registerAddr, uint8_t dataByteCount, uin
 			/* NACK to indicate that this is the first, last, and only byte 
 			 * that can be written. */				
 			ack = false;
-			break;		
+			break;	
+			
+		case I2C_REGISTER_ADDR_VERSION:
+			/* The version register is read-only */
+			ack = false;
+			break;	
 		
 		default:
 			ack = false;
