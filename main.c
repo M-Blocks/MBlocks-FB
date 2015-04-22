@@ -162,7 +162,7 @@ uint8_t getByteForMasterRead(uint8_t registerAddr, uint8_t dataByteCount, bool p
 			response = 0xFF;
 			break;
 			
-		case I2C_REGISTER_ADDR_TX_COUNT:
+		case I2C_REGISTER_ADDR_TX_AVAILABLE_COUNT:
 			response = uart0_getTxBufferAvailableCount();
 			break;
 
@@ -180,7 +180,7 @@ uint8_t getByteForMasterRead(uint8_t registerAddr, uint8_t dataByteCount, bool p
 			}
 			break;
 			
-		case I2C_REGISTER_ADDR_RX_COUNT:
+		case I2C_REGISTER_ADDR_RX_CONSUMED_COUNT:
 			response = uart0_getRxBufferConsumedCount();
 			break;
 			
@@ -253,7 +253,7 @@ bool getMasterWriteAllowed(uint8_t registerAddr) {
 				return false;
 			}
 			
-		case I2C_REGISTER_ADDR_TX_COUNT:
+		case I2C_REGISTER_ADDR_TX_AVAILABLE_COUNT:
 			return false;
 
 		case I2C_REGISTER_ADDR_TX_LED_SELECT:
@@ -266,7 +266,7 @@ bool getMasterWriteAllowed(uint8_t registerAddr) {
 			}		
 			
 		case I2C_REGISTER_ADDR_RX_BUF:
-		case I2C_REGISTER_ADDR_RX_COUNT:
+		case I2C_REGISTER_ADDR_RX_CONSUMED_COUNT:
 			/* The received data buffer and the received data counter registers
 			 * are both read-only. */
 			return false;
@@ -404,7 +404,7 @@ bool processByteFromMasterWrite(uint8_t registerAddr, uint8_t dataByteCount, uin
 			}
 			break;
 			
-		case I2C_REGISTER_ADDR_TX_COUNT:
+		case I2C_REGISTER_ADDR_TX_AVAILABLE_COUNT:
 			/* The transmit buffer counter register is read-only. */
 			ack = false;
 			break;
@@ -421,7 +421,7 @@ bool processByteFromMasterWrite(uint8_t registerAddr, uint8_t dataByteCount, uin
 			break;			
 			
 		case I2C_REGISTER_ADDR_RX_BUF:
-		case I2C_REGISTER_ADDR_RX_COUNT:
+		case I2C_REGISTER_ADDR_RX_CONSUMED_COUNT:
 			/* The receive buffer and receive buffer count registers are both
 			 * read-only. */
 			ack = false;

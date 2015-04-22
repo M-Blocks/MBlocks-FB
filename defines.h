@@ -16,18 +16,17 @@
 #define I2C_REGISTER_ADDR_AMBIENT_LIGHT				0x10
 #define I2C_REGISTER_ADDR_SENSOR_ENABLE				0x11	
 
-/* */
 #define I2C_REGISTER_ADDR_IR_LEDS_MANUAL_CONTROL	0x20
 
 /* Multi-byte register to which data to be transmitted should be written */
 #define I2C_REGISTER_ADDR_TX_BUF					0x30
-/* Read only register indicating how many bytes remain to be transmitted */
-#define I2C_REGISTER_ADDR_TX_COUNT					0x31
+/* Read only register indicating how many bytes of the transmit buffer are available */
+#define I2C_REGISTER_ADDR_TX_AVAILABLE_COUNT		0x31
 /* Select which IR LEDs are used for transmission */
 #define I2C_REGISTER_ADDR_TX_LED_SELECT				0x33
 
 #define I2C_REGISTER_ADDR_RX_BUF					0x40
-#define I2C_REGISTER_ADDR_RX_COUNT					0x41
+#define I2C_REGISTER_ADDR_RX_CONSUMED_COUNT			0x41
 #define I2C_REGISTER_ADDR_RX_FLUSH					0x42
 #define I2C_REGISTER_ADDR_RX_ENABLE					0x43
 
