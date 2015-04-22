@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "defines.h"
 #include "gitversion.h"
@@ -86,7 +87,7 @@ int main(void) {
 	
 	/* Initialize the RGB LEDs */
 	leds_init();
-	
+		
 	/* Initialize the timer which we use to strobe the two RGB LEDs*/
 	timer1_init(leds_updateCallback);
 	
@@ -94,6 +95,20 @@ int main(void) {
 	
 	/* Enable global interrupts */
 	sei();
+	
+	/* Turn all LEDs on */
+	leds_setStateTop(0x07);
+	leds_setStateBottom(0x07);
+	
+	/* Delay 1 second */
+	uint8_t i = 10;
+	while (i-- >= 1) {
+		_delay_ms(100);
+	}
+	
+	/* Turn all LEDs off */
+	leds_setStateTop(0x00);
+	leds_setStateBottom(0x00);
 	
 	while (1) {
 		if (m_sleepRequested) {
@@ -108,7 +123,6 @@ int main(void) {
 
 uint8_t getByteForMasterRead(uint8_t registerAddr, uint8_t dataByteCount, bool prevNACK) {
 	uint8_t response;
-	bool sensorsAlreadyOn;
 	int16_t getCharResp;
 	static uint16_t ambientLightValue = 0x00;
 	
@@ -122,37 +136,21 @@ uint8_t getByteForMasterRead(uint8_t registerAddr, uint8_t dataByteCount, bool p
 			break;
 			
 		case I2C_REGISTER_ADDR_AMBIENT_LIGHT:
-			if (dataByteCount == 0) {
-				if ((sensorsAlreadyOn = sensors_getEnabled()) == false) {
-					/* If power was not already being supplied to the ambient
-					 * light sensor (and IR demodulator), turn it on now. */
-					sensors_enable();
-					/* Datasheet states that rise and fall-times of the sensor 
-					 * are both 5ms.  In addition, there is a 5ms propagation 
-					 * delay to content with.  To be safe, delay for 15ms. */
-					_delay_ms(15);
-				}
-				
+			if (!sensors_getEnabled()) {
+				response = 0x00;
+			} else if (dataByteCount == 0) {
 				/* Left align the ADC result so that the master can get the
 				 * 8 MSb's by just reading the first byte. */
 				ambientLightValue = ambient_get10Bit() << 6;
-				
-				/* Disable the ambient light sensor and IR demodulator if they
-				 * were not already powered when the command to read the 
-				 * ambient light sensor arrived. */
-				if (!sensorsAlreadyOn) {
-					sensors_disable();
-				}
-				
 				/* Reply with the most-significant byte first */
 				response = (uint8_t)(ambientLightValue >> 8);
 			} else if (dataByteCount == 1) {
 				/* Reply with the least-significant byte second */
 				response = (uint8_t)(ambientLightValue & 0xFF);
 			} else {
-				response = 0xFF;
+				response = 0x00;
 			}
-			break;
+			break;	
 		
 		case I2C_REGISTER_ADDR_IR_LEDS_MANUAL_CONTROL:
 			response = m_irLEDManualState;
@@ -192,8 +190,17 @@ uint8_t getByteForMasterRead(uint8_t registerAddr, uint8_t dataByteCount, bool p
 			response = 0x00;
 			break;
 	
+		case I2C_REGISTER_ADDR_SENSOR_ENABLE:
 		case I2C_REGISTER_ADDR_RX_ENABLE:
 			response = (sensors_getEnabled() ? 0x01 : 0x00);
+			break;
+		
+		case I2C_REGISTER_ADDR_VERSION_STRING:
+			if (dataByteCount < strlen(gitVersionStr)) {
+				response = gitVersionStr[dataByteCount];
+			} else {
+				response = '\0';
+			}
 			break;
 		
 		case I2C_REGISTER_ADDR_VERSION:
@@ -264,11 +271,13 @@ bool getMasterWriteAllowed(uint8_t registerAddr) {
 			 * are both read-only. */
 			return false;
 			
+		case I2C_REGISTER_ADDR_SENSOR_ENABLE:
 		case I2C_REGISTER_ADDR_RX_FLUSH:
 		case I2C_REGISTER_ADDR_RX_ENABLE:
 		case I2C_REGISTER_ADDR_SLEEP:
 			return true;
 		
+		case I2C_REGISTER_ADDR_VERSION_STRING:
 		case I2C_REGISTER_ADDR_VERSION:
 			return false;
 		
@@ -425,6 +434,7 @@ bool processByteFromMasterWrite(uint8_t registerAddr, uint8_t dataByteCount, uin
 			ack = false;
 			break;
 			
+		case I2C_REGISTER_ADDR_SENSOR_ENABLE:			
 		case I2C_REGISTER_ADDR_RX_ENABLE:
 			if (dataByte & 0x01) {
 				sensors_enable();
@@ -441,9 +451,10 @@ bool processByteFromMasterWrite(uint8_t registerAddr, uint8_t dataByteCount, uin
 			 * that can be written. */				
 			ack = false;
 			break;	
-			
+
+		case I2C_REGISTER_ADDR_VERSION_STRING:			
 		case I2C_REGISTER_ADDR_VERSION:
-			/* The version register is read-only */
+			/* The version registers are read-only */
 			ack = false;
 			break;	
 		

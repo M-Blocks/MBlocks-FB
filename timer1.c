@@ -36,7 +36,7 @@ void timer1_init(void (*overflowCallback)(void)) {
 		
 		/* With an 8MHz clock divided by a prescalar of 64, each counter of the
 		 * timer represents 8us.  For a overflow interrupt every 10ms, we set 
-		 * the TOP value, held in the ICR1 register, to 30ms / 8us - 1 = 3749. 
+		 * the TOP value, held in the ICR1 register, to 10ms / 8us - 1 = 1249. 
 		 */
 		ICR1 = (1250 - 1);
 	
