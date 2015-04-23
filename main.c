@@ -39,16 +39,12 @@ bool processByteFromMasterWrite(uint8_t registerAddr, uint8_t dataByteCount, uin
 
 static void sleep(void);
 
-#if(0)
 #ifndef DEBUG
 FUSES = {
-	.low = (FUSE_SUT_CKSEL4 & FUSE_SUT_CKSEL1), // internal 8MHz oscillator (6CK/16CK+16ms), no CKDIV8, no CKOUT
+	.low = (FUSE_SUT_CKSEL4 & FUSE_SUT_CKSEL3 & FUSE_SUT_CKSEL2 & FUSE_SUT_CKSEL0), // internal 8MHz oscillator (6CK/16CK+16ms), no CKDIV8, no CKOUT
 	.high = (FUSE_SPIEN & FUSE_BODLEVEL0), // 1.8V brownout voltage, no watchdog, no EE save, no SPI enabled, no debugWire, reset enabled
 	.extended = (FUSE_BODPD1 & FUSE_BODACT0) // BOD enabled in active mode, sampled in power-down, no self-programming 
 };
-
-LOCKBITS = (LOCKBITS_DEFAULT);
-#endif
 #endif
 
 int main(void) {

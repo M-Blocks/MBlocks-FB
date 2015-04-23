@@ -39,7 +39,7 @@
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
-    <avrtool>com.atmel.avrdbg.tool.jtagice3plus</avrtool>
+    <avrtool>com.atmel.avrdbg.tool.atmelice</avrtool>
     <com_atmel_avrdbg_tool_jtagice3plus>
       <ToolOptions>
         <InterfaceProperties>
@@ -51,6 +51,16 @@
       <ToolName>JTAGICE3</ToolName>
     </com_atmel_avrdbg_tool_jtagice3plus>
     <avrtoolinterface>debugWIRE</avrtoolinterface>
+    <com_atmel_avrdbg_tool_atmelice>
+      <ToolOptions>
+        <InterfaceProperties>
+        </InterfaceProperties>
+        <InterfaceName>debugWIRE</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.atmelice</ToolType>
+      <ToolNumber>J41800031490</ToolNumber>
+      <ToolName>Atmel-ICE</ToolName>
+    </com_atmel_avrdbg_tool_atmelice>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-1' ">
     <ToolchainSettings>
@@ -86,9 +96,8 @@
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
     <OutputFileName>FaceBoard_Debug_Face-1</OutputFileName>
     <OutputFileExtension>.elf</OutputFileExtension>
-    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-2' ">
     <ToolchainSettings>
@@ -125,9 +134,8 @@ bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitver
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
     <OutputFileName>FaceBoard_Debug_Face-2</OutputFileName>
     <OutputFileExtension>.elf</OutputFileExtension>
-    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-3' ">
     <ToolchainSettings>
@@ -164,9 +172,8 @@ bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitver
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
     <OutputFileName>FaceBoard_Debug_Face-3</OutputFileName>
     <OutputFileExtension>.elf</OutputFileExtension>
-    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-4' ">
     <ToolchainSettings>
@@ -203,9 +210,8 @@ bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitver
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
     <OutputFileName>FaceBoard_Debug_Face-4</OutputFileName>
     <OutputFileExtension>.elf</OutputFileExtension>
-    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-5' ">
     <ToolchainSettings>
@@ -242,9 +248,8 @@ bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitver
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
     <OutputFileName>FaceBoard_Debug_Face-5</OutputFileName>
     <OutputFileExtension>.elf</OutputFileExtension>
-    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Face-6' ">
     <ToolchainSettings>
@@ -281,9 +286,8 @@ bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitver
 bash -c "../bin/update_gitVersionStr.sh ../gitversion_template.h ../gitversion.h"</PreBuildEvent>
     <OutputFileName>FaceBoard_Debug_Face-6</OutputFileName>
     <OutputFileExtension>.elf</OutputFileExtension>
-    <PostBuildEvent>bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).elf ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).hex ../gitversion.c"
-bash -c "../bin/append_gitVersionStr.sh FaceBoard_$(Configuration).eep ../gitversion.c"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release_Face-1' ">
     <ToolchainSettings>
