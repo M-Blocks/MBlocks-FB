@@ -20,6 +20,9 @@ void uart0_enableTx(void);
 void uart0_disableTx(void);
 bool uart0_isTxEnabled(void);
 
+bool uart0_setTxCompleteCallback(void (*callback)(void));
+bool uart0_setRxCompleteCallback(void (*callback)(uint8_t));
+
 bool uart0_putchar(uint8_t c);
 int16_t uart0_getchar(void);
 uint8_t uart0_getchar_min(void);

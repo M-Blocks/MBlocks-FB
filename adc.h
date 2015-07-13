@@ -44,5 +44,7 @@
 void adc_init(uint8_t vref, uint8_t prescalar);
 uint16_t adc_convert(uint8_t channel, uint16_t nThrowaway, uint16_t nAvg);
 uint32_t adc_convertAccum(uint8_t channel, uint16_t nThrowaway, uint16_t nAvg);
+uint16_t adc_oneSample(void);
+bool adc_oneSampleInterrupt(void (*callback)(uint16_t));
 
 #endif /* ADC_H_ */

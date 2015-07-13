@@ -183,9 +183,4 @@ void leds_updateCallback() {
 		
 		topActive = true;		
 	}
-	
-	if ((m_ledStateTop == 0x00) && (m_ledStateBottom == 0x00)) {
-		/* No need to keep the timer running if all LEDs are off */
-		timer1_stop();
-	}
 }

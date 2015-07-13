@@ -44,6 +44,9 @@ static volatile bool m_txBufFull = false;
 
 static bool m_initialized = false;
 
+static void (*txCompleteCallback)(void) = NULL;
+static void (*rxCompleteCallback)(uint8_t) = NULL;
+
 void uart0_init() {
 	/* Disable the transmitter, receiver, and all interrupts.  Set the UCSZ02
 	 * bit to enable 9-bit data mode.  We'll use the 9th bit to indicate 
@@ -140,6 +143,16 @@ bool uart0_isTxEnabled() {
 	return ((UCSR0B & (1<<TXEN0)) ? true : false);
 }
 
+bool uart0_setTxCompleteCallback(void (*callback)(void)) {
+	txCompleteCallback = callback;
+	return true;
+}
+
+bool uart0_setRxCompleteCallback(void (*callback)(uint8_t)) {
+	rxCompleteCallback = callback;
+	return true;
+}
+
 bool uart0_putchar(uint8_t c) {
 	bool success;
 		
@@ -150,6 +163,20 @@ bool uart0_putchar(uint8_t c) {
 			/* If the transmit buffer is full, return failure. */
 			success = false;
 		} else {
+			/* If the transmit buffer is empty, we need to enable the 36kHz 
+			 * carrier and drive the anodes of the IR LEDs we'll be using for
+			 * transmission to VCC.  We only do this if the transmit buffer
+			 * is empty to avoid wasting time every time a character is 
+			 * added to the transmit buffer. */
+			if (m_txBufEmpty) {
+				/* Enable the 36kHz carrier */
+				timer0_enableCarrierOutput();
+			
+				/* Drive the anodes for the IR LEDs that have been selected for
+				 * transmission to VCC. */
+				ircomm_activateEnabledLEDs();
+			}
+			
 			/* Place the new character in the transmit buffer */
 			m_txBuf[m_txBufHead] = c;
 			
@@ -166,14 +193,7 @@ bool uart0_putchar(uint8_t c) {
 			if (m_txBufHead == m_txBufFull) {
 				m_txBufFull = true;
 			}
-			
-			/* Enable the 36kHz carrier */
-			timer0_enableCarrierOutput();
-			
-			/* Drive the anodes for the IR LEDs that have been selected for
-			 * transmission to VCC. */
-			ircomm_activateEnabledLEDs();
-			
+						
 			/* Enable the data register empty interrupt, (if it is not already 
 			 * enabled).  When the USART has nothing to transmit, this
 			 * interrupt will trigger, and the ISR will transfer a character 
@@ -377,6 +397,11 @@ ISR(USART0_TXC_vect) {
 	
 	/* Disable this interrupt */
 	UCSR0B &= ~(1<<TXCIE0);
+	
+	/* If it exists, execute the transmit complete callback */
+	if (txCompleteCallback != NULL) {
+		txCompleteCallback();
+	}
 }
 
 ISR(USART0_RX_vect) {
@@ -423,10 +448,10 @@ ISR(USART0_RX_vect) {
 		 * binary inverse of the other, we have successfully received one byte
 		 * of data. */
 		
-		#if (1)
+#if (1)
 			/* Toggle the blue LED with each character received. */
 			PORT_LED_BLUE ^= (1<<PIN_NUMBER_LED_BLUE);
-		#endif
+#endif
 		
 		/* Return if the receive buffer is full. */
 		if (m_rxBufFull) {
@@ -445,7 +470,12 @@ ISR(USART0_RX_vect) {
 		/* If the head pointer has caught up with the tail, the FIFO is full. */
 		if (m_rxBufHead == m_rxBufTail) {
 			m_rxBufFull = true;
-		}		
+		}
+		
+		/* If it exists, execute the receive callback */
+		if (rxCompleteCallback != NULL) {
+			rxCompleteCallback(m_rxActualChar);
+		}
 	} else {
 		m_rxActualCharValid = false;
 	}

@@ -7,12 +7,14 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 
 #include "adc.h"
 
-static uint16_t adc_oneSample(void);
+static void (*conversionCompleteCallback)(uint16_t) = NULL;
 
 void adc_init(uint8_t vref, uint8_t prescalar) {
 	/* Clear the reference bits without modifying the REFEN, ADC0EN, or MUX 
@@ -77,7 +79,7 @@ uint32_t adc_convertAccum(uint8_t channel, uint16_t nThrowaway, uint16_t nAvg) {
 
 
 uint16_t adc_oneSample() {
-	/* Enable that the ADC is enabled so that it does not hang after we start 
+	/* Ensure that the ADC is enabled so that it does not hang after we start 
 	 * the conversion. */
 	ADCSRA |= (1<<ADEN);
 
@@ -92,4 +94,37 @@ uint16_t adc_oneSample() {
 	
 	/* Return the result of the conversion */
 	return ADC;
+}
+
+bool adc_oneSampleInterrupt(void (*callback)(uint16_t)) {
+	/* Ensure that the ADC is enabled so that it does not hang after we start 
+	 * the conversion. */
+	ADCSRA |= (1<<ADEN);
+
+	/* Wait for any ongoing conversion to finish */
+	while (ADCSRA & (1<<ADSC));
+	
+	/* Save the callback address. */
+	conversionCompleteCallback = callback;
+	
+	/* Clear the interrupt flag */
+	ADCSRA |= (1<<ADIF);
+	
+	/* Enable the ADC interrupt */
+	ADCSRA |= (1<<ADIE);
+	
+	/* Start the new conversion */
+	ADCSRA |= (1<<ADSC);
+	
+	return true;
+}
+
+ISR(ADC_vect) {
+	/* Disable the interrupt */
+	ADCSRA &= ~(1<<ADIE);
+	
+	/* If it exists, execute the ADC conversion complete callback. */
+	if (conversionCompleteCallback != NULL) {
+		conversionCompleteCallback(ADC);
+	}
 }
