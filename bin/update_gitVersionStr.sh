@@ -34,11 +34,11 @@ fi
 # in which we've been instructed to run git describe. Run it, then pop
 # the old working directory off the stack.  We redirect the results of 
 # pushd and popd to /dev/null to suppress their output.
-pushd . >> /dev/null
+pushd . 
 cd $gitDir
 gitVersionStr=$(git describe --tags --long --dirty 2>/dev/null)
 success=$?
-popd >> /dev/null
+popd
 
 # If git describe was successful, use sed to place the version description
 # into the template file and write the output file.
@@ -47,8 +47,5 @@ if [ $success == 0 ]; then
 	minorVersionStr=$(echo $gitVersionStr | sed -e 's/[^0-9]*[0-9]*\.\([0-9]*\).*/\1/')
 	
 	sed -e 's/\$GIT_VERSION_STR\$/'$gitVersionStr'/g' -e 's/\$MAJOR_VERSION_STR\$/'$majorVersionStr'/g' -e 's/\$MINOR_VERSION_STR\$/'$minorVersionStr'/g' < $1 > $2
-else
-	echo "Directory ${gitDir}/ is not a valid git repository"
-	exit 4
 fi
 

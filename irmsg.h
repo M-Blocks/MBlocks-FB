@@ -17,6 +17,7 @@ bool irmsg_getTxActive(void);
 
 bool irmsg_getAmbientLightSamplingActive(void);
 uint8_t irmsg_getAmbientLightSampleCount(void);
+int16_t irmsg_getAmbientLightSample(void);
 
 void irmsg_uartTxCompleteCallback(void);
 void irmsg_postTxFlashIRLEDsCallback(void);
